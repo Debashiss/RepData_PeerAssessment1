@@ -1,25 +1,191 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible_Research_week2_Project"
+author: "Debashis Sengupta"
+date: "January 1, 2019"
+output: html_document
 ---
 
+Introduction
+------------
 
-## Loading and preprocessing the data
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a [Fitbit](https://www.fitbit.com/home), [Nike Fuelband](https://www.nike.com/us/en_us/nikeplus-fuelband), or [Jawbone Up](https://jawbone.com/up). These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
+The Project
+-----------
 
-## What is mean total number of steps taken per day?
+This project has multiple parts. One part includes writing a report that answers the questions outlined below. Ultimately, the entire assignment will be in this single R markdown document, processed by knitr and transformed into an HTML file.
 
+Throughout this report codes I used to generate the output I present are embedded at appropriate phases. When writing code chunks in the R markdown document, I have always used echo = TRUE so that a reader will be able to read the code. the intended readers include peers who will evaluate this via peer assessment.
 
+For the plotting aspects of this assignment, I can use any plotting system in R (i.e., base, lattice, ggplot2)
 
-## What is the average daily activity pattern?
+Fork/clone the GitHub repository created for this assignment. I will be reuired to submit this assignment by pushing my completed files into my forked repository on GitHub. The assignment submission will consist of the URL to my GitHub repository and the SHA-1 commit ID for my repository state.
 
+This report will address/answer the following questions:
 
++ What is the mean total number of steps taken per day?
++ What is the average daily activity pattern?
++ Imputing missing values.
++ Are there differences in activity patters between weekdays and weekends?
 
-## Imputing missing values
+Setting global option to turn warnings off
+------------------------------------------
+```{r}
+knitr::opts_chunk$set(warning=FALSE)
+```
+Loading and Processing the data
+-------------------------------
+```{r loading data in and plotting package, echo=TRUE}
 
+library(ggplot2)
 
+activity<-read.csv("activity.csv", header=TRUE)
 
-## Are there differences in activity patterns between weekdays and weekends?
+activity$date<-as.POSIXct(activity$date, "%Y-%m-%d")
+
+weekday<-weekdays(activity$date)
+
+activity<-cbind(activity,weekday)
+
+```
+
+Question1: What is average total number of steps taken per day?
+---------------------------------------------------------------
+
+```{r plotting average steps, echo=TRUE}
+
+activity_total_steps <- with(activity, aggregate(steps, by = list(date), FUN = sum, na.rm = TRUE))
+
+names(activity_total_steps) <- c("date", "steps")
+
+hist(activity_total_steps$steps, main = "Total number of steps taken per day", xlab = "Total steps taken per day", col = "Grey", ylim = c(0,30), breaks = seq(0,25000,by=5000))
+```
+
++ Computing **mean** and **average** for total steps taken per day
+
+```{r computing mean and average, echo=TRUE}
+
+as.integer(mean(activity_total_steps$steps))
+
+as.integer(median(activity_total_steps$steps))
+```
++ According to our computation the **mean** and **median** of steps taken per day are 9354 and 10395, respectively.
+
+Question2: What is the average daily activity pattern?
+------------------------------------------------------
+
++ Make a time series plot (i.e., type="1") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r plotting of average number of steps, echo=TRUE}
+
+average_daily_activity <- aggregate(activity$steps, by=list(activity$interval), FUN=mean, na.rm=TRUE)
+
+names(average_daily_activity) <- c("interval", "mean")
+
+plot(average_daily_activity$interval, average_daily_activity$mean, type = "l", col="Grey", lwd = 2, xlab="Interval", ylab="Average number of steps", main="Average number of steps per intervals")
+```
++ Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r computing maximum number of steps interval, echo=TRUE} 
+
+average_daily_activity[which.max(average_daily_activity$mean), ]$interval
+
+```
++ According to our computation, the 5-minute interval with the maximum number of steps was the 835th.
+
+Question3: What is the impact of imputing Missing Values?
+---------------------------------------------------------
+
++ Compute the total number of rows with missing values (NAs) in the dataset.
+
+```{r summation of rows with missing values, echo=TRUE}
+
+sum(is.na(activity$steps))
+
+```
+
++ According to our computation, there are 2304 rows in the dataset with missing values (NAs)
+
++ Devising a strategy for filling in all of the missing values in the dataset. This strategy is not necessarily sophisticated, and for example, could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+```{r strategy for filling missing values, echo=TRUE}
+
+imputed_steps <- average_daily_activity$mean[match(activity$interval, average_daily_activity$interval)]
+
+```
+
++ Now creating a new dataset that is equal to the original dataset with with all missing values substituted for (filled in).
+
+```{r missing values filled in, echo=TRUE}
+
+activity_imputed <- transform(activity, steps = ifelse(is.na(activity$steps), yes = imputed_steps, no = activity$steps))
+
+total_steps_imputed <- aggregate(steps ~ date, activity_imputed, sum)
+
+names(total_steps_imputed) <- c("date", "daily_steps")
+
+```
+
++ Making a histogram of the total number of steps taken each day and compute the mean and median total number of steps taken per day. Determine if these values differ from the estimates from the first part of the assignment. What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+``` {r plot to explain impact of imputing missing data on total daily steps, echo=TRUE}
+
+hist(total_steps_imputed$daily_steps, col = "Black", xlab = "Total steps per day", ylim = c(0,30), main = "Total number of steps taken each day", breaks = seq(0,25000,by=5000))
+
+```
+
++ Computing the mean and median of thenew dataset where missing values have been filled in
+
+``` {r computing the mean and median, echo=TRUE}
+
+as.integer(mean(total_steps_imputed$daily_steps))
+
+as.integer(median(total_steps_imputed$daily_steps))
+
+```
+
++ According to our computation the missing value filled-in dataset mean and median (both) are 10766.
+
++ The new mean of the imputed data is 10766 steps compared to the old mean of 9354 steps; in other words a difference of 1412 steps on average per day.
+
++ The new median of the imputed data is also 10766 steps compared to the old median of 10395 steps; in other words a difference of 371 steps on average per day. 
+
++ However, the overall shape of the distribution remain unchanged.
+
+Question4: Are there differences in activity patterns between weekdays and weekends?
+-------------------------------------------------------------------------------------
+
++ Creating a new factor variable in the dataset with two levels - "weekday" and "weekend". This factor will indicate whether a given date is a week-day or weekend-day. 
+
+```{r configuring week- or weekend days, echo=TRUE}
+
+activity$date <- as.Date(strptime(activity$date, format="%Y-%m-%d"))
+
+activity$datetype <- sapply(activity$date, function(x) {
+        if (weekdays(x) == "Saturday" | weekdays(x) =="Sunday") 
+                {y <- "Weekend"} else 
+                {y <- "Weekday"}
+                y
+        })
+
+```
+
++ Making a panel plot containing a time series plot (i.e. type = "1") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis) below.
+
+```{r creating comparative time series plots, echo=TRUE}
+
+activity_by_date <- aggregate(steps~interval + datetype, activity, mean, na.rm = TRUE)
+
+plot<- ggplot(activity_by_date, aes(x = interval , y = steps, color = datetype)) +
+       geom_line() +
+       labs(title="Average daily steps by type of day in the week", x = "Interval", y = "Average number of steps") +
+       facet_wrap(~datetype, ncol = 1, nrow=2)
+
+print(plot)
+
+```
+
++ Conclusion: By comparing the weekend and weekday charts, it can be concluded that step activity trends are slightly (but noticeably) different based on whether they occur on a weekday or a weekend--during the weekend , activity is slightly higher. This may be due to people having an increased opportunity for activity for not being at work (during the work hours) for those who work during the week.
+
